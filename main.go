@@ -36,7 +36,8 @@ var (
  </head>
  <body>
   <img src="images/img_0097.gif"/><br/>
-  <img src="images/img_0099.gif"/>
+  <img src="images/img_0099.gif"/><br/>
+  <img src="images/img_0100.gif"/>
  </body>
 </html>
 `
