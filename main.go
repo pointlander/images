@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sort"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -141,6 +142,7 @@ func routeIndex(w http.ResponseWriter, r *http.Request, ps httprouter.Params) er
 	if err != nil {
 		return err
 	}
+	sort.Strings(directories)
 	index := IndexTemplateValues{
 		Images: directories,
 	}
