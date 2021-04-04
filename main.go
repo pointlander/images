@@ -10,6 +10,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -28,16 +29,35 @@ type Error struct {
 	Error string `json:"error"`
 }
 
+// IndexTemplateValues is the values for the index template
+type IndexTemplateValues struct {
+	Images []string
+}
+
 var (
-	index = `
+	// IndexTemplate is the template of the index page
+	IndexTemplate = `
 <html>
  <head>
   <title>Images</title>
  </head>
  <body>
-  <img src="images/img_0097.gif"/><br/>
-  <img src="images/img_0099.gif"/><br/>
-  <img src="images/img_0100.gif"/>
+  <img id="img"/><br/><br>
+  <button onclick="next()">Next</button>
+  <script>
+   var images = [
+  {{range .Images}}
+    "{{.}}",
+  {{end}}
+   ];
+   var current = 0;
+   var img = document.getElementById("img");
+   img.src = "images/" + images[current];
+   function next() {
+     current = (current + 1) % images.length;
+     img.src = "images/" + images[current];
+   }
+  </script>
  </body>
 </html>
 `
@@ -45,7 +65,17 @@ var (
 	Address = flag.String("address", ":80", "address of the server")
 	// Fetch fetch url
 	Fetch = flag.String("fetch", "", "file to fetch")
+	// IndexTemplateInstance is an instance of an index templates
+	IndexTemplateInstance *template.Template
 )
+
+func init() {
+	var err error
+	IndexTemplateInstance, err = template.New("index").Parse(IndexTemplate)
+	if err != nil {
+		panic(err)
+	}
+}
 
 func main() {
 	flag.Parse()
@@ -102,7 +132,22 @@ func handleError(handler ErrorHandle) httprouter.Handle {
 
 func routeIndex(w http.ResponseWriter, r *http.Request, ps httprouter.Params) error {
 	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte(index))
+
+	dir, err := os.Open("imgs/")
+	if err != nil {
+		return err
+	}
+	directories, err := dir.Readdirnames(-1)
+	if err != nil {
+		return err
+	}
+	index := IndexTemplateValues{
+		Images: directories,
+	}
+	err = IndexTemplateInstance.Execute(w, index)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
