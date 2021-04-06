@@ -44,7 +44,7 @@ var (
  </head>
  <body>
   <img id="img"/><br/><br>
-  <button onclick="next()">Next</button>
+  <button onclick="previous()">Previous</button> <button onclick="next()">Next</button>
   <script>
    var images = [
   {{range .Images}}
@@ -56,6 +56,10 @@ var (
    img.src = "images/" + images[current];
    function next() {
      current = (current + 1) % images.length;
+     img.src = "images/" + images[current];
+   }
+   function previous() {
+     current = (images.length + current - 1) % images.length;
      img.src = "images/" + images[current];
    }
   </script>
