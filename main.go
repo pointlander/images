@@ -11,12 +11,16 @@ import (
 	"flag"
 	"fmt"
 	"html/template"
+	"image"
+	_ "image/gif"
+	"image/jpeg"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -70,6 +74,8 @@ var (
 	Address = flag.String("address", ":80", "address of the server")
 	// Fetch fetch url
 	Fetch = flag.String("fetch", "", "file to fetch")
+	// Thumb generate thumb nails
+	Thumb = flag.Bool("thumb", false, "generate thumb nails")
 	// IndexTemplateInstance is an instance of an index templates
 	IndexTemplateInstance *template.Template
 )
@@ -96,6 +102,55 @@ func main() {
 		}
 		response.Body.Close()
 		fmt.Println(string(data))
+		return
+	}
+
+	if *Thumb {
+		dir, err := os.Open("imgs/")
+		if err != nil {
+			panic(err)
+		}
+		names, err := dir.Readdirnames(-1)
+		if err != nil {
+			panic(err)
+		}
+		sort.Strings(names)
+		_, err = os.Stat("thumbs")
+		if err != nil {
+			err = os.Mkdir("thumbs", 0755)
+			if err != nil {
+				panic(err)
+			}
+		}
+		for _, name := range names {
+			thumb := strings.TrimSuffix(name, ".gif") + "jpeg"
+			_, err := os.Stat("thumbs/" + thumb)
+			if err == nil {
+				continue
+			}
+			input, err := os.Open("imgs/" + name)
+			if err != nil {
+				panic(err)
+			}
+			img, _, err := image.Decode(input)
+			if err != nil {
+				panic(err)
+			}
+			input.Close()
+			img = img.(interface {
+				SubImage(r image.Rectangle) image.Image
+			}).SubImage(image.Rect(0, 0, 128, 128))
+
+			output, err := os.Create("thumbs/" + thumb)
+			if err != nil {
+				panic(err)
+			}
+			err = jpeg.Encode(output, img, nil)
+			if err != nil {
+				panic(err)
+			}
+			output.Close()
+		}
 		return
 	}
 
