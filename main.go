@@ -95,6 +95,10 @@ var (
 		 td.appendChild(img1);
 		 tr.appendChild(td);
 	 }
+	 if ((images.length % 5) != 0) {
+		 var thumbs = document.getElementById("thumbs")
+		 thumbs.appendChild(tr);
+	 }
 	 for (var i = 0; i < images.length; i++) {
 		 console.log(images[i]);
 	 }
