@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/nfnt/resize"
 )
 
 // ErrorHandle handler that can return error
@@ -49,6 +50,8 @@ var (
  <body>
   <img id="img"/><br/><br>
   <button onclick="previous()">Previous</button> <button onclick="next()">Next</button>
+	<table id="thumbs">
+	</table>
   <script>
    var images = [
   {{range .Images}}
@@ -66,6 +69,35 @@ var (
      current = (images.length + current - 1) % images.length;
      img.src = "images/" + images[current];
    }
+	 function change(id) {
+     img.src = "images/" + images[id];
+		 console.log(img.src);
+   }
+	 function handler(id) {
+		 return function (){change(id)};
+	 }
+	 var tr = null;
+	 for (var i = 0; i < images.length; i++) {
+		 if ((i % 5) == 0) {
+			if (tr != null) {
+				var thumbs = document.getElementById("thumbs")
+				thumbs.appendChild(tr);
+			}
+		  tr = document.createElement("tr");
+		 }
+		 var img1 = document.createElement("img");
+		 var image = ` + "`" + `${images[i]}` + "`" + `;
+		 var parts = image.split('.');
+		 img1.src = "thumbs/" + parts[0] + ".jpeg";
+		 images[i] = parts.join('.');
+		 img1.onclick = handler(i);
+		 var td = document.createElement("td");
+		 td.appendChild(img1);
+		 tr.appendChild(td);
+	 }
+	 for (var i = 0; i < images.length; i++) {
+		 console.log(images[i]);
+	 }
   </script>
  </body>
 </html>
@@ -123,7 +155,7 @@ func main() {
 			}
 		}
 		for _, name := range names {
-			thumb := strings.TrimSuffix(name, ".gif") + "jpeg"
+			thumb := strings.TrimSuffix(name, ".gif") + ".jpeg"
 			_, err := os.Stat("thumbs/" + thumb)
 			if err == nil {
 				continue
@@ -137,15 +169,13 @@ func main() {
 				panic(err)
 			}
 			input.Close()
-			img = img.(interface {
-				SubImage(r image.Rectangle) image.Image
-			}).SubImage(image.Rect(0, 0, 128, 128))
+			resized := resize.Resize(128, 0, img, resize.Lanczos3)
 
 			output, err := os.Create("thumbs/" + thumb)
 			if err != nil {
 				panic(err)
 			}
-			err = jpeg.Encode(output, img, nil)
+			err = jpeg.Encode(output, resized, nil)
 			if err != nil {
 				panic(err)
 			}
@@ -157,6 +187,7 @@ func main() {
 	router := httprouter.New()
 	router.GET("/", handleError(routeIndex))
 	router.GET("/images/:image", handleError(routeImage))
+	router.GET("/thumbs/:image", handleError(routeThumbs))
 
 	server := http.Server{
 		Addr:           *Address,
@@ -221,6 +252,22 @@ func routeImage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) er
 
 	w.Header().Set("Content-Type", "image/gif")
 	data, err := ioutil.ReadFile("imgs/" + file)
+	if err != nil {
+		return err
+	}
+	w.Write(data)
+
+	return nil
+}
+
+func routeThumbs(w http.ResponseWriter, r *http.Request, ps httprouter.Params) error {
+	file := filepath.Base(ps[0].Value)
+	if file == ".." {
+		return errors.New("file not found")
+	}
+
+	w.Header().Set("Content-Type", "image/jpeg")
+	data, err := ioutil.ReadFile("thumbs/" + file)
 	if err != nil {
 		return err
 	}
